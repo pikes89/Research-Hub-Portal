@@ -64,7 +64,7 @@ def selftest(st):
                 os.symlink(os.path.join(hl.HUB, f), p); fixed.append("relinked " + f)
             except Exception as e: bad.append("cannot link %s: %s" % (f, e))
     q = os.path.join(T, "topic-queue.json")
-    if os.path.exists(os.path.join(hl.HUB, "topic-queue.json")) and not os.path.exists(q): os.makedirs(T, exist_ok=True); os.symlink(os.path.join(hl.HUB, "topic-queue.json"), q); fixed.append("relinked topic queue")
+    if os.path.exists(os.path.join(hl.HUB, "topic-queue.json")) and not os.path.exists(q): os.symlink(os.path.join(hl.HUB, "topic-queue.json"), q); fixed.append("relinked topic queue")
     # login link
     if not rd(os.path.join(T, "login-link.txt")): bad.append("no Portal login link on this Mac")
     # both bots alive, last runs
@@ -90,10 +90,58 @@ def selftest(st):
     except Exception: pass
     say("ok" if not bad else "alert", "Daily self-test %s: %s%s" % (day, "OK" if not bad else "; ".join(bad), (" (fixed: " + ", ".join(fixed) + ")") if fixed else ""))
     return "self-test " + ("ok" if not bad else "problems")
+def clean_downloads(st):
+    """Hourly: move portal files that landed in ~/Downloads (or Chrome's download folder) onto the NAS archive, verify, then to the Trash.
+    Skips files younger than 20 min and anything while a run holds the lock. Never touches other files."""
+    if time.time() - st.get("dl_clean_ts", 0) < 3600: return
+    st["dl_clean_ts"] = time.time()
+    try:
+        if hl.info(): return          # a run is in progress
+    except Exception: pass
+    import hashlib
+    sp2 = importlib.util.spec_from_file_location("ah", os.path.join(H, "already-have.py")); ah = importlib.util.module_from_spec(sp2); sp2.loader.exec_module(ah)
+    arch = ah.ARCH
+    if not os.path.isdir(arch): return
+    md = lambda p: hashlib.md5(open(p, "rb").read()).hexdigest()
+    inbox = os.path.realpath(os.path.join(H, "inbox"))
+    dirs = {os.path.realpath(os.path.expanduser("~/Downloads"))}
+    try: dirs.add(os.path.realpath(json.load(open(os.path.expanduser("~/Library/Application Support/Google/Chrome/Default/Preferences")))["download"]["default_directory"]))
+    except Exception: pass
+    dirs.discard(inbox)
+    idx = {}
+    for d in os.listdir(arch):
+        p = os.path.join(arch, d)
+        if os.path.isdir(p):
+            for f in os.listdir(p): idx.setdefault(f, []).append(os.path.join(p, f))
+    moved = copied = 0; trash = os.path.expanduser("~/.Trash")
+    for D in dirs:
+        try: names = sorted(os.listdir(D))
+        except Exception: continue
+        for f in names:
+            src = os.path.join(D, f)
+            if f.startswith(".") or not os.path.isfile(src) or not f.lower().endswith((".pdf", ".xlsx")) or time.time() - os.path.getmtime(src) < 1200: continue
+            r = ah.check(f); isportal = f.lower().endswith(".pdf") and "-portal" in f.lower() or r.startswith("HAVE")
+            if not isportal: continue
+            h = md(src); exact = [p for p in idx.get(f, []) if md(p) == h]
+            if exact: dst = exact[0]
+            elif re.search(r" \(\d+\)\.[a-z]+$", f):
+                dd = os.path.join(os.path.dirname(arch), "_duplicates-from-downloads"); os.makedirs(dd, exist_ok=True); dst = os.path.join(dd, f)
+                if not os.path.exists(dst): shutil.copy2(src, dst); copied += 1
+            else:
+                m = re.match(r"HAVE (\w[\w-]*)/", r); tgt = os.path.join(arch, m.group(1)) if m and os.path.isdir(os.path.join(arch, m.group(1))) else os.path.join(arch, "Unsorted")
+                os.makedirs(tgt, exist_ok=True); dst = os.path.join(tgt, f)
+                if os.path.exists(dst) and md(dst) != h: dst = os.path.join(tgt, "dl-" + f)
+                if not os.path.exists(dst): shutil.copy2(src, dst); copied += 1
+            if os.path.exists(dst) and md(dst) == h:
+                t = os.path.join(trash, f)
+                if os.path.exists(t): t = os.path.join(trash, "%d-%s" % (time.time(), f))
+                shutil.move(src, t); moved += 1
+    if moved: return "cleaned %d portal files from Downloads (%d copied to the NAS archive, rest already there)" % (moved, copied)
+
 def main():
     if not os.path.isdir(hl.HUB): return []
     st = load(STATE, {}); acts = []
-    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st)):
+    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st)):
         try:
             r = fn()
             if r: acts.append(r)
