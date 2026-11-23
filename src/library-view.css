@@ -1,0 +1,14 @@
+.sub2{margin:16px 0 8px;color:var(--teal);letter-spacing:.08em;font-size:12px;text-transform:uppercase}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.tcard:hover{border-color:var(--teal)}
+.tcard b{color:var(--ink)}
+.pb{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.pb u{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--violet))}
+i.new{font-style:normal;color:var(--sage)}
+.crumb{margin:4px 0 10px;color:var(--mut)}.crumb a{color:var(--teal)}
+.filters{display:flex;gap:8px;margin-bottom:10px}
+.filters select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font:inherit}
+details{border-top:1px solid var(--line);padding:6px 0}
+details summary{cursor:pointer;color:var(--ink);padding:4px 0}
+.btn.sm{padding:5px 12px;margin:8px 0;font-size:12px}

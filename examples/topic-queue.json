@@ -1,0 +1,6 @@
+{"cap_per_topic": 100,
+ "note": "Set status to 'stopped' to stop a topic. Topics are served until cap_per_topic statistics are archived.",
+ "topics": [
+  {"name": "Cloud Computing", "status": "active", "folder": "CloudComputing"},
+  {"name": "Cybersecurity", "status": "active", "folder": "Cybersecurity"}
+ ]}

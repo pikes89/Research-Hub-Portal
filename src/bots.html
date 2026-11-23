@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hub bots</title>
+<style>body{font:14px system-ui;background:#0f1419;color:#e6e6e6;margin:0;padding:16px;max-width:860px}a{color:#5fd1c1}.c{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:600px){.c{grid-template-columns:1fr}}
+.b{background:#1a212b;border:1px solid #2b3542;border-radius:8px;padding:12px}.ok{color:#8fd19e}.bad{color:#ff8f8f}.m{color:#98a2b3;font-size:12px}.msg{padding:6px 0;border-top:1px solid #2b3542}.alert{color:#ffcf6e}</style>
+<a href="/">&larr; Dashboard</a><h2>Hub bots</h2><div class="c" id="c"></div><h3>Conversation</h3><div id="m"></div>
+<script>
+const t=s=>s?new Date(s*1000).toLocaleString():'-',e=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function card(n,b,self){if(!b)return`<div class="b"><b>${e(n||'?')}</b><br><span class="bad">no heartbeat yet</span></div>`;const age=Math.floor(Date.now()/1000-b.ts),on=age<1200;
+return`<div class="b"><b>${e(b.host)}</b> ${self?'(this Mac)':''} <span class="m">${b.role}</span><br><span class="${on&&!b.issues.length?'ok':'bad'}">${!on?'offline':b.issues.length?'unhealthy':'healthy'}</span> <span class="m">heartbeat ${age<90?age+' s':Math.floor(age/60)+' min'} ago</span>
+<div class="m">NAS ${b.nas?'ok':'DOWN'} · Claude ${b.claude?'ok':'DOWN'} · Chrome ${b.chrome?'ok':'DOWN'} · Downloads ${b.downloads?'ok':'BLOCKED'}</div>${b.issues.length?`<div class="bad">${b.issues.map(e).join('<br>')}</div>`:''}
+<div class="m">last run: ${b.last_run?b.last_run.result+', '+b.last_run.files+' files':'none'} ${b.last_run&&b.last_run.note?'· '+e(b.last_run.note.slice(0,90)):''}</div></div>`}
+async function f(){const d=await (await fetch('/api/bots')).json();
+document.getElementById('c').innerHTML=card(d.me,d.mine,1)+card(d.peer,d.theirs,0);
+document.getElementById('m').innerHTML=(d.messages||[]).slice().reverse().map(x=>`<div class="msg"><span class="m">${t(x.ts)} · ${e(x.from)} → ${e(x.to)}</span><br><span class="${x.kind==='alert'?'alert':''}">${e(x.text)}</span></div>`).join('')||'<div class="m">No messages yet.</div>'}
+f();setInterval(f,15000)
+</script>

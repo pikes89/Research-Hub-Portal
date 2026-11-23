@@ -1,0 +1,49 @@
+{
+ "note": "Portal hierarchy: Region > Industry (22 industries from Portal's own sitemap) > Topic > archive folder. Folders are mapped to an Industry and Topic here; Region is detected per statistic from its title (see portal-sitemap.json). Files are never moved.",
+ "industries": {
+  "Technology & Telecommunications": {
+   "Artificial Intelligence": [
+    "AI",
+    "GenerativeAI"
+   ],
+   "Data & Analytics": [
+    "DataMining"
+   ],
+   "Data Centers & Cloud": [
+    "DataCenters",
+    "CloudComputing",
+    "DataCenterEnergyAndPowerConsumption"
+   ],
+   "Cybersecurity": [
+    "Cybersecurity",
+    "Ransomware",
+    "DataBreaches",
+    "CybercrimeAndFraud"
+   ],
+   "Space & Satellites": [
+    "CommercialSatellites",
+    "SatelliteInternetAndBroadband"
+   ]
+  },
+  "Health, Pharma & Medtech": {
+   "Digital Health": [
+    "AIInHealthcare"
+   ]
+  },
+  "Energy & Environment": {
+   "Climate Change": [
+    "GlobalWarming",
+    "GreenhouseGasEmissions",
+    "ExtremeWeatherAndNaturalDisasters"
+   ]
+  },
+  "Finance & Insurance": {
+   "Insurance in the Philippines": [
+    "PrivateInsurancePH",
+    "GovernmentInsurancePH",
+    "ForeignInsurancePH",
+    "HealthInsuranceInThePhilippines"
+   ]
+  }
+ }
+}

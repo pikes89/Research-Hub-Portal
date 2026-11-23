@@ -1,0 +1,2 @@
+{"primary": "mac-a", "alternate": "mac-b", "mode": "auto", "lock_minutes": 25,
+ "note": "mode: auto | primary-only | alternate-only. Hosts are lower-case LocalHostName (scutil --get LocalHostName)."}

@@ -1,0 +1,9 @@
+data/
+inbox/
+secrets/
+login-link.txt
+*.bak*
+*.local-bak
+__pycache__/
+.DS_Store
+_private/

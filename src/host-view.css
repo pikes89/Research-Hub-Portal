@@ -1,0 +1,14 @@
+#hostbar{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin:0 0 12px}
+#hostbar .hc{flex:1;min-width:230px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+#hostbar .hc.run{border-color:var(--sage);box-shadow:0 0 0 1px var(--sage) inset}
+#hostbar .hc.me b:after{content:"  · this computer";color:var(--teal);font-weight:400;font-size:12px}
+#hostbar .st{font-size:13px}.hc.run .st{color:var(--sage)}.hc.off .st{color:var(--rose)}.hc.bad .st{color:var(--sand)}
+#hostbar .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--mut)}
+#hostbar .run .dot{background:var(--sage);animation:hp 1.2s infinite}.off .dot{background:var(--rose)}.bad .dot{background:var(--sand)}
+@keyframes hp{50%{opacity:.25}}
+#hostbar small{color:var(--mut)}
+/* per-computer theme: same layout, different colours */
+html[data-host="mac-b"]{--bg:#1a1210;--panel:#241915;--panel2:#2e211b;--ink:#f6ece4;--mut:#cdb5a4;--line:#4d372c;
+--teal:#f0a35e;--violet:#e8809a;--sage:#b9dd8f;--sand:#f2c879;--rose:#ff8f7a}
+html[data-host="mac-b"] aside{background:#120c0a}
+html[data-host="mac-b"] body:before{background-image:radial-gradient(900px 520px at 90% -10%,rgba(232,128,154,.14),transparent 60%),radial-gradient(800px 520px at 0% 105%,rgba(240,163,94,.12),transparent 60%),linear-gradient(rgba(205,181,164,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(205,181,164,.045) 1px,transparent 1px)!important;background-size:auto,auto,48px 48px,48px 48px}
