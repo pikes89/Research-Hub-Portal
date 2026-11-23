@@ -64,7 +64,7 @@ def selftest(st):
                 os.symlink(os.path.join(hl.HUB, f), p); fixed.append("relinked " + f)
             except Exception as e: bad.append("cannot link %s: %s" % (f, e))
     q = os.path.join(T, "topic-queue.json")
-    if os.path.exists(os.path.join(hl.HUB, "topic-queue.json")) and not os.path.exists(q): os.symlink(os.path.join(hl.HUB, "topic-queue.json"), q); fixed.append("relinked topic queue")
+    if os.path.exists(os.path.join(hl.HUB, "topic-queue.json")) and not os.path.exists(q): os.makedirs(T, exist_ok=True); os.symlink(os.path.join(hl.HUB, "topic-queue.json"), q); fixed.append("relinked topic queue")
     # login link
     if not rd(os.path.join(T, "login-link.txt")): bad.append("no Portal login link on this Mac")
     # both bots alive, last runs

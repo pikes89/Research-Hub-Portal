@@ -30,7 +30,7 @@ def running(name):
     return any(l.strip().endswith(exe) for l in sh(["ps", "-axo", "comm="]).splitlines())
 def readable(path, t=8):
     ok = []
-    th = threading.Thread(target=lambda: (os.listdir(path), ok.append(1))); th.daemon = True; th.start(); th.join(t)
+    th = threading.Thread(target=lambda: (lambda: (os.listdir(path), ok.append(1)))() if os.path.isdir(path) else None); th.daemon = True; th.start(); th.join(t)
     return bool(ok)
 def in_window():
     n = datetime.datetime.now(); m = n.hour * 60 + n.minute
