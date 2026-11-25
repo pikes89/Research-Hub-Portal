@@ -16,7 +16,7 @@ what has been downloaded.
 - **Two-Mac failover**: roles (`auto`, `primary-only`, `alternate-only`) and a lock on the NAS prevent double runs
 - **Bots (no AI tokens)**: heartbeat, self-heal (remount NAS, reopen Chrome and Claude), peer watching, a shared message channel
 - **Self-updating**: each Mac pulls code, task text and the login link from the NAS
-- **Daily self-test** with auto-repair and a report on the message channel
+- **Sync check twice a day** (morning before the first download, evening after the last) with auto-repair, a cross-check between both machines and a report on the message channel
 - **Dashboard** (local web server, optional tailnet access): archive summary, library view, bot status
 - **Duplicate protection**: an ID ledger plus title matching so nothing is downloaded twice
 - Optional mirror to cloud storage (rclone) and optional document indexing (Paperless-ngx consume folder)

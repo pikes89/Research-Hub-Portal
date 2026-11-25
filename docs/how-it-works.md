@@ -47,7 +47,7 @@ Failure counting: runs that found nothing new are not failures (`nothing_new()` 
 - **Login link sync**: `secrets/login-link.txt` on the NAS and the local copy stay in step (newest wins).
 - **Self-update**: if `install/researchhub-code.tgz` changed, extract the scripts into `~/ResearchHub` (skipped if `data/no-autoupdate` exists, for the machine you develop on).
 - **Task text update**: if `data/auto-skill.flag` exists, replace the local task text from `install/SKILL.md`.
-- **Daily self-test** (first run after 07:45): shared files are live NAS links, login link present, both heartbeats fresh, no unrecovered failed runs, archive cache rebuilt. Repairs what it can and reports on the message channel and `selftest.json`.
+- **Sync check, twice a day** (first bot run after 07:00, before the first download window, and first run after 20:30, after the last one; the evening check also confirms that runs were recorded and had no real errors; each Mac compares its snapshot of runs, ledger, schedule and archive size with the other Mac's): shared files are live NAS links, login link present, both heartbeats fresh, no unrecovered failed runs, archive cache rebuilt. Repairs what it can and reports on the message channel and `selftest.json`.
 
 ## 5. Dashboard
 

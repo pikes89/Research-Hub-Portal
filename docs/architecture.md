@@ -8,7 +8,7 @@
 | Gate | `src/should-run.py` | first step of the task | Decides `RUN` or `SKIP`; syncs shared files; refreshes the heartbeat |
 | Lock and roles | `src/hub-lock.py` | gate and task | Role (primary or alternate), mode, NAS lock, takeover rules |
 | Bot | `src/hub-bot.py` | launchd, every 120 s | Heartbeat, self-heal, peer watch, messages |
-| Automation | `src/hub-auto.py` | called by the bot | Login-link sync, self-update, daily self-test |
+| Automation | `src/hub-auto.py` | called by the bot | Login-link sync, self-update, twice-daily sync check |
 | Queue planner | `src/queue-plan.py` | task step 2 | Topic rotation, caps, low-queue reminder |
 | Duplicate check | `src/already-have.py` | task | ID ledger plus title matching |
 | Status | `src/set-status.py` | task | Live run status and the run log |
@@ -32,7 +32,8 @@ YOUR_NAS_SHARE/research-archive/
     lock.d/                  atomic directory lock, held during a run
     bots/<host>.json         heartbeat of each bot
     bots/messages.jsonl      shared message channel between bots
-    selftest.json            latest daily self-test per host
+    selftest.json            latest sync check per host
+    synccheck.json           morning and evening data snapshots per host (compared across machines)
     secrets/login-link.txt   optional one-time login link (private, see security.md)
     install/                 install.sh, code bundle, task template, launchd templates
 ```
