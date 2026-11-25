@@ -127,6 +127,20 @@ def selftest(st):
     except Exception: pass
     say("ok" if not bad else "alert", "%s sync check %s: %s%s" % ("Morning (before first download)" if slot == "am" else "Evening (after last download)", day, "OK" if not bad else "; ".join(bad), (" (fixed: " + ", ".join(fixed) + ")") if fixed else ""))
     return "%s sync check %s" % (slot, "ok" if not bad else "problems")
+def refresh_dashboard(st):
+    """Dashboards were static files rebuilt only at the end of a run on that one Mac, so the two Macs showed different numbers.
+    Now every bot rebuilds its dashboard from the NAS whenever the archive size changed (at most every 10 min, never during a run)."""
+    if time.time() - st.get("dash_ts", 0) < 600: return
+    try:
+        if hl.info(): return
+    except Exception: pass
+    n = snapshot()["archive_files"]
+    if n < 0: return
+    if n == st.get("dash_files") and time.time() - st.get("dash_ts", 0) < 6 * 3600: return
+    st["dash_ts"] = time.time()
+    r = subprocess.run([sys.executable, os.path.join(H, "build-dashboard.py")], capture_output=True, text=True, timeout=400, cwd=H)
+    if r.returncode == 0: st["dash_files"] = n; return "dashboard rebuilt from the NAS (%s)" % (r.stdout.strip().splitlines() or [""])[-1][:120]
+    return "dashboard rebuild failed: " + (r.stderr.strip().splitlines() or ["?"])[-1][:120]
 def clean_downloads(st):
     """Hourly: move portal files that landed in ~/Downloads (or Chrome's download folder) onto the NAS archive, verify, then to the Trash.
     Skips files younger than 20 min and anything while a run holds the lock. Never touches other files."""
@@ -178,7 +192,7 @@ def clean_downloads(st):
 def main():
     if not os.path.isdir(hl.HUB): return []
     st = load(STATE, {}); acts = []
-    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st)):
+    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st), lambda: refresh_dashboard(st)):
         try:
             r = fn()
             if r: acts.append(r)
