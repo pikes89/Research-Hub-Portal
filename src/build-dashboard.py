@@ -16,7 +16,7 @@ NAS_SHARE = "/Volumes/YOUR_NAS_SHARE"
 NAS_ARCHIVE = NAS_SHARE + "/research-archive/Portal"
 PAPERLESS = "http://192.168.1.50:8010"
 SMB_BASE = "smb://192.168.1.50/YOUR_NAS_SHARE/research-archive/Portal/"
-try:  # away from the home network, use the NAS's Tailscale address (pmaaai-server)
+try:  # away from the home network, use the NAS's Tailscale address (your-nas)
     import socket
     socket.create_connection(("192.168.1.50", 8010), timeout=2).close()
 except Exception:
@@ -88,12 +88,22 @@ if os.path.isdir(NAS_ARCHIVE):
         nas_files |= {os.path.relpath(os.path.join(root, f), NAS_ARCHIVE) for f in fs}
 
 cloud = set()
+# Only the Mac with rclone + Google Drive access can list the cloud copy; it shares the list on the NAS so the other Mac shows the same status.
+CLOUD_LIST = NAS_SHARE + "/research-archive/_hub/cloud-list.txt"
 try:
     out = subprocess.run(["rclone", "lsf", "-R", "--files-only", "gdrive:research-archive/Portal"],
                          capture_output=True, text=True, timeout=60).stdout
     cloud = {l.strip() for l in out.splitlines() if l.strip()}
+    if cloud and os.path.isdir(os.path.dirname(CLOUD_LIST)):
+        open(CLOUD_LIST + ".tmp", "w").write("\n".join(sorted(cloud))); os.replace(CLOUD_LIST + ".tmp", CLOUD_LIST)
 except Exception:
     pass
+if not cloud:
+    try:
+        if time.time() - os.path.getmtime(CLOUD_LIST) < 2 * 86400:
+            cloud = {l.strip() for l in open(CLOUD_LIST) if l.strip()}
+    except Exception:
+        pass
 
 data = []
 for ri, r in enumerate(rows):
@@ -124,6 +134,14 @@ for fo in {os.path.dirname(s) for s in extra}:
         if sc < 0.7 or ps not in pdfs or xs not in xls:
             continue
         pdfs.remove(ps); xls.remove(xs); pairs.append((ps, xs))
+# second pass across folders (a PDF and its XLSX are sometimes filed under neighbouring topics): stricter threshold
+_pd = [s for s, fm in extra.items() if "pdf" in fm and "xlsx" not in fm and not any(s == q[0] for q in pairs)]
+_xl = [s for s, fm in extra.items() if "xlsx" in fm and "pdf" not in fm and not any(s == q[1] for q in pairs)]
+for sc, ps, xs in sorted(((len(words(os.path.basename(p)) & words(os.path.basename(x))) / max(1, len(words(os.path.basename(x)) | words(os.path.basename(p)))), p, x)
+                          for p in _pd for x in _xl), reverse=True):
+    if sc < 0.9 or ps not in _pd or xs not in _xl:
+        continue
+    _pd.remove(ps); _xl.remove(xs); pairs.append((ps, xs))
 for ps, xs in pairs:
     extra[ps]["xlsx"] = extra[xs]["xlsx"]; del extra[xs]
 for stem, fm in sorted(extra.items()):
@@ -139,10 +157,29 @@ for stem, fm in sorted(extra.items()):
     item["nas"] = all(x in nas_files for x in got)
     item["cloud"] = all(x in cloud for x in got)
     item["got"] = len(got)
+    # Portal offers no PDF for table-type statistics (Download menu = CSV/Excel only): an XLSX on its own is complete
+    if item["xlsx"] and not item["pdf"]:
+        item["tableonly"] = True; item["got"] = 2
     item["topic"], item["added"] = topic_of(item), added_of(item)
     data.append(item)
     used_files |= set(got)
 
+# a PDF-only row that duplicates an already complete statistic (same PDF saved twice, or filed under a neighbouring topic) is hidden; files stay on disk
+try:
+    _MANUAL_DUPES = set(json.load(open(os.path.join(HERE, "duplicates.json"))).get("hide_pdf", []))
+except Exception:
+    _MANUAL_DUPES = set()
+_full = [d for d in data if d["got"] == 2]
+_hidden = []
+def _dupe(d):
+    w = words(d["t"])
+    return any(len(w & words(c["t"])) / max(1, len(w | words(c["t"]))) >= 0.9 for c in _full if c is not d)
+_keep = []
+for d in data:
+    if d["got"] != 2 and d.get("pdf") and not d.get("xlsx") and (_dupe(d) or d["pdf"] in _MANUAL_DUPES):
+        _hidden.append(d); continue
+    _keep.append(d)
+data[:] = _keep
 n_have = sum(1 for d in data if d["got"] == 2)
 n_nas = sum(1 for d in data if d["nas"])
 n_cloud = sum(1 for d in data if d["cloud"])
@@ -189,7 +226,7 @@ h = h.replace("<h2>// Library &amp; download queue</h2>", "<h2>// Library</h2>")
 h = h.replace("<th>Status</th>", "<th>Status</th><th>Open</th>")
 h = h.replace("Zotero · papers", "Zotero (later)")
 h = h.replace('<a href="#">Paperless-ngx · reports</a>', '<a href="%s" target="_blank">Paperless-ngx · reports</a>' % PAPERLESS)
-h = h.replace('<a href="#">Portal</a>', '<a href="https://portal.example.com/" target="_blank">Portal</a>')
+h = h.replace('<a href="#">Portal</a>', '<a href="https://www.portal.com/" target="_blank">Portal</a>')
 h = h.replace("&gt; Download queue", "&gt; Requests")
 
 
@@ -279,5 +316,7 @@ print("rows=%d complete=%d on_nas=%d on_cloud=%d paperless=%s docs=%d nas=%s%%" 
 for d in data:
     if d["got"] != 2:
         print("INCOMPLETE:", d["t"], d["pdf"] or "-", d["xlsx"] or "-")
+for d in _hidden:
+    print("DUPLICATE (hidden, file kept):", d["t"], d["pdf"])
 if unmatched:
     print("UNMATCHED FILES:", unmatched)

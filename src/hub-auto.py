@@ -30,14 +30,16 @@ def login_link():
         open(loc, "w").write(b); os.chmod(loc, 0o600); return "newer login link pulled from the NAS"
 def self_update(st):
     if os.path.exists(os.path.join(D, "no-autoupdate")): return
-    tgz = os.path.join(I, "researchhub-code.tgz"); s = sig(tgz)
+    tgz = os.path.join(I, "researchhub-code.tgz")
+    # VERSION holds a hash written at each deploy: file CONTENT is read fresh over SMB, while mtime/size can be cached for a long time
+    s = (rd(os.path.join(I, "VERSION")) or "").strip() or sig(tgz)
     if not s: return
     if st.get("code_sig") is None: st["code_sig"] = s; return
     if s == st["code_sig"]: return
     tmp = tempfile.mkdtemp(); n = 0
     with tarfile.open(tgz) as t: t.extractall(tmp)
     for f in glob.glob(os.path.join(tmp, "ResearchHub", "*")):
-        if os.path.isfile(f) and f.endswith((".py", ".sh", ".html", ".js", ".css")):
+        if os.path.isfile(f) and f.endswith((".py", ".sh", ".html", ".js", ".css")) and os.path.basename(f) not in ("dashboard.html", "status.js"):  # generated per Mac
             shutil.copy2(f, os.path.join(H, os.path.basename(f))); n += 1
     shutil.rmtree(tmp, ignore_errors=True); st["code_sig"] = s
     return "updated %d code files from the NAS bundle" % n
@@ -127,6 +129,22 @@ def selftest(st):
     except Exception: pass
     say("ok" if not bad else "alert", "%s sync check %s: %s%s" % ("Morning (before first download)" if slot == "am" else "Evening (after last download)", day, "OK" if not bad else "; ".join(bad), (" (fixed: " + ", ".join(fixed) + ")") if fixed else ""))
     return "%s sync check %s" % (slot, "ok" if not bad else "problems")
+def sync_views(st):
+    """Every run: make this Mac's dashboard inputs equal to the shared NAS state, so both Macs show the same page.
+    - status.js (last run / running now): the NAS copy is written by whichever Mac ran last; take it if newer.
+    - runs cache + schedule: hub-sync.py.  - duplicates.json: shared list on the NAS, linked here."""
+    acts = []
+    dj, nj = os.path.join(H, "duplicates.json"), os.path.join(hl.HUB, "duplicates.json")
+    if os.path.exists(nj) and os.path.realpath(dj) != os.path.realpath(nj):
+        if os.path.exists(dj): os.rename(dj, dj + ".local-bak")
+        os.symlink(nj, dj); acts.append("linked shared duplicates list")
+    ns, ls = os.path.join(os.path.dirname(hl.HUB), "status.js"), os.path.join(H, "status.js")
+    upd = lambda p: int((re.search(r'"updated": *(\d+)', rd(p) or "") or [0, 0])[1] or 0)
+    if upd(ns) > upd(ls): shutil.copyfile(ns, ls)
+    if time.time() - st.get("sync_ts", 0) > 300:
+        st["sync_ts"] = time.time()
+        subprocess.run([sys.executable, os.path.join(H, "hub-sync.py")], capture_output=True, timeout=120)
+    return "; ".join(acts) or None
 def refresh_dashboard(st):
     """Dashboards were static files rebuilt only at the end of a run on that one Mac, so the two Macs showed different numbers.
     Now every bot rebuilds its dashboard from the NAS whenever the archive size changed (at most every 10 min, never during a run)."""
@@ -136,10 +154,11 @@ def refresh_dashboard(st):
     except Exception: pass
     n = snapshot()["archive_files"]
     if n < 0: return
-    if n == st.get("dash_files") and time.time() - st.get("dash_ts", 0) < 6 * 3600: return
+    key = "%d|%s|%s" % (n, sig(os.path.join(H, "build-dashboard.py")), sig(os.path.join(hl.HUB, "duplicates.json")))
+    if key == st.get("dash_files") and time.time() - st.get("dash_ts", 0) < 6 * 3600: return
     st["dash_ts"] = time.time()
     r = subprocess.run([sys.executable, os.path.join(H, "build-dashboard.py")], capture_output=True, text=True, timeout=400, cwd=H)
-    if r.returncode == 0: st["dash_files"] = n; return "dashboard rebuilt from the NAS (%s)" % (r.stdout.strip().splitlines() or [""])[-1][:120]
+    if r.returncode == 0: st["dash_files"] = key; return "dashboard rebuilt from the NAS (%s)" % (r.stdout.strip().splitlines() or [""])[-1][:120]
     return "dashboard rebuild failed: " + (r.stderr.strip().splitlines() or ["?"])[-1][:120]
 def publish_view(st):
     """What this Mac's dashboard actually serves (fetched from its own local server), published to _hub/views/<host>.json plus a copy of the page,
@@ -213,7 +232,7 @@ def clean_downloads(st):
 def main():
     if not os.path.isdir(hl.HUB): return []
     st = load(STATE, {}); acts = []
-    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st), lambda: publish_view(st), lambda: refresh_dashboard(st), lambda: publish_view(st)):
+    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st), lambda: sync_views(st), lambda: publish_view(st), lambda: refresh_dashboard(st), lambda: publish_view(st)):
         try:
             r = fn()
             if r: acts.append(r)
