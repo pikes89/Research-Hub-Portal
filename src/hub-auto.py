@@ -110,8 +110,10 @@ def selftest(st):
         ok.append("%d runs today" % len(today))
     sc = os.path.join(hl.HUB, "synccheck.json"); rep = load(sc, {}); pe = rep.get(peer) or {}
     ps = pe.get("snap") or {}
-    if ps and pe.get("day") == day and time.time() - pe.get("ts", 0) < 4 * 3600:
-        diff = [k for k in ("runs", "ledger", "schedule_saved") if ps.get(k) != snap.get(k) and abs(ps.get(k, 0) - snap.get(k, 0)) > (0 if k == "schedule_saved" else 2)]
+    # the other Mac's snapshot is only comparable if taken within 10 minutes of ours; small drift is normal while a run is writing
+    if ps and pe.get("day") == day and abs(pe.get("ts", 0) - time.time()) < 600:
+        tol = {"runs": 3, "ledger": 12, "schedule_saved": 0, "archive_files": 25}
+        diff = [k for k in tol if abs(ps.get(k, 0) - snap.get(k, 0)) > tol[k]]
         if diff: bad.append("data differs from %s: %s" % (peer, ", ".join("%s %s vs %s" % (k, snap[k], ps.get(k)) for k in diff)))
         else: ok.append("matches " + str(peer))
     if not bad: ok.append("all checks passed")
