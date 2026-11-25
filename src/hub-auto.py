@@ -141,6 +141,27 @@ def refresh_dashboard(st):
     r = subprocess.run([sys.executable, os.path.join(H, "build-dashboard.py")], capture_output=True, text=True, timeout=400, cwd=H)
     if r.returncode == 0: st["dash_files"] = n; return "dashboard rebuilt from the NAS (%s)" % (r.stdout.strip().splitlines() or [""])[-1][:120]
     return "dashboard rebuild failed: " + (r.stderr.strip().splitlines() or ["?"])[-1][:120]
+def publish_view(st):
+    """What this Mac's dashboard actually serves (fetched from its own local server), published to _hub/views/<host>.json plus a copy of the page,
+    so the other Mac (and Claude) can verify it without seeing the screen."""
+    import urllib.request
+    v = {"ts": int(time.time()), "host": ME, "server_up": False}
+    try:
+        h = urllib.request.urlopen("http://127.0.0.1:8787/", timeout=5).read().decode("utf-8", "replace"); v["server_up"] = True
+        for k, lab in (("downloaded", "Downloaded"), ("on_nas", "On NAS")):
+            m = re.search(r"<b>([\d/]+)</b><span>" + lab, h); v[k] = m.group(1) if m else None
+        v["page_bytes"] = len(h); vd = os.path.join(hl.HUB, "views"); os.makedirs(vd, exist_ok=True)
+        open(os.path.join(vd, ME + ".html"), "w").write(h)
+    except Exception as e: v["error"] = str(e)[:100]
+    try: v["built"] = int(os.path.getmtime(os.path.join(H, "dashboard.html")))
+    except Exception: pass
+    try: json.dump(v, open(os.path.join(hl.HUB, "views", ME + ".json"), "w"))
+    except Exception: pass
+    peer = hl.role().get("alternate") if ME == hl.role().get("primary") else hl.role().get("primary")
+    pv = load(os.path.join(hl.HUB, "views", (peer or "") + ".json"), None)
+    if v.get("on_nas") and pv and pv.get("on_nas") and abs(int(v["on_nas"]) - int(pv["on_nas"])) > 3 and abs(v["ts"] - pv.get("ts", 0)) < 900 and abs(v.get("built", 0) - pv.get("built", 0)) > 900:
+        st["dash_files"] = None; st["dash_ts"] = 0   # my page is older than theirs and differs: rebuild next step
+        return "dashboard differs from %s (%s vs %s on NAS): forcing a rebuild" % (peer, v["on_nas"], pv["on_nas"])
 def clean_downloads(st):
     """Hourly: move portal files that landed in ~/Downloads (or Chrome's download folder) onto the NAS archive, verify, then to the Trash.
     Skips files younger than 20 min and anything while a run holds the lock. Never touches other files."""
@@ -192,7 +213,7 @@ def clean_downloads(st):
 def main():
     if not os.path.isdir(hl.HUB): return []
     st = load(STATE, {}); acts = []
-    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st), lambda: refresh_dashboard(st)):
+    for fn in (login_link, lambda: self_update(st), lambda: skill_update(st), lambda: selftest(st), lambda: clean_downloads(st), lambda: publish_view(st), lambda: refresh_dashboard(st), lambda: publish_view(st)):
         try:
             r = fn()
             if r: acts.append(r)
