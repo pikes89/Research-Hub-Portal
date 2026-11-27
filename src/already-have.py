@@ -24,11 +24,11 @@ def check(title, sid=None):
         for f in os.listdir(p):
             if f.startswith(".") or not f.lower().endswith((".pdf", ".xlsx")): continue
             if sid and ("id%s" % sid) in f: return "HAVE %s/%s" % (d, f)
-            if len(t) >= 3 and overlap(t, toks(f)) >= 0.8: return "HAVE %s/%s" % (d, f)
+            if len(t) >= 3 and len(toks(f)) >= 3 and overlap(t, toks(f)) >= 0.8: return "HAVE %s/%s" % (d, f)
     if os.path.exists(LED):
         for l in open(LED):
             r = json.loads(l)
-            if overlap(t, toks(r["title"])) >= 0.9: return "HAVE ledger title (%s)" % r["folder"]
+            if len(t) >= 3 and len(toks(r["title"])) >= 3 and overlap(t, toks(r["title"])) >= 0.9: return "HAVE ledger title (%s)" % r["folder"]
     return "NEW"
 if __name__ == "__main__":
     a = sys.argv[1:]

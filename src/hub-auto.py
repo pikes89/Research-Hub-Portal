@@ -219,7 +219,10 @@ def clean_downloads(st):
         for f in names:
             src = os.path.join(D, f)
             if f.startswith(".") or not os.path.isfile(src) or not f.lower().endswith((".pdf", ".xlsx")) or time.time() - os.path.getmtime(src) < 1200: continue
-            r = ah.check(f); isportal = f.lower().endswith(".pdf") and "-portal" in f.lower() or r.startswith("HAVE")
+            r = ah.check(f)
+            # ONLY files named the way Portal names its exports may be touched: a title-word match alone once moved personal files (e.g. MATH.pdf) to the Trash
+            isportal = bool(re.search(r"-20\d\d-portal( \(\d+\))?\.pdf$", f, re.I) or re.match(r"statistic_id\d+_.+\.(pdf|xlsx)$", f)
+                            or (re.match(r"[a-z0-9.\-]+(_[a-z0-9.\-]+){3,}( \(\d+\))?\.xlsx$", f) and r.startswith("HAVE")))
             if not isportal: continue
             h = md(src); exact = [p for p in idx.get(f, []) if md(p) == h]
             if exact: dst = exact[0]
