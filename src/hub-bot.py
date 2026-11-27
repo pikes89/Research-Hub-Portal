@@ -33,7 +33,7 @@ def readable(path, t=8):
     th = threading.Thread(target=lambda: (lambda: (os.listdir(path), ok.append(1)))() if os.path.isdir(path) else None); th.daemon = True; th.start(); th.join(t)
     return bool(ok)
 def in_window():
-    n = datetime.datetime.now(); m = n.hour * 60 + n.minute
+    n = hl.ph_now(); m = n.hour * 60 + n.minute
     return 7 * 60 + 40 <= m <= 20 * 60 + 15
 def load(p, d):
     try: return json.load(open(p))

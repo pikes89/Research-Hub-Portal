@@ -29,7 +29,8 @@ def runs(n=60):
     return out[-n:][::-1], out
 
 def summary(all_runs):
-    now = datetime.datetime.now(); today = now.date()
+    PH = datetime.timezone(datetime.timedelta(hours=8))  # dates follow Philippine time
+    now = datetime.datetime.now(PH).replace(tzinfo=None); today = now.date()
     wk = today - datetime.timedelta(days=today.weekday()); mo = today.replace(day=1)
     B = {"today": {"files": 0, "stats": set(), "topics": {}}, "week": {"files": 0, "stats": set(), "topics": {}}, "month": {"files": 0, "stats": set(), "topics": {}}}
     src = "archive"
@@ -37,21 +38,21 @@ def summary(all_runs):
     except Exception: rows = None
     if rows:
         for topic, stem, mt in rows:
-            d = datetime.date.fromtimestamp(mt)
+            d = datetime.datetime.fromtimestamp(mt, PH).date()
             for k, lo in (("today", today), ("week", wk), ("month", mo)):
                 if d >= lo:
                     B[k]["files"] += 1; B[k]["stats"].add(stem); B[k]["topics"][topic] = B[k]["topics"].get(topic, 0) + 1
     else:
         src = "log"
         for r in all_runs:
-            d = datetime.date.fromtimestamp(r["finished"] / 1000)
+            d = datetime.datetime.fromtimestamp(r["finished"] / 1000, PH).date()
             for k, lo in (("today", today), ("week", wk), ("month", mo)):
                 if d >= lo:
                     B[k]["files"] += r.get("files", 0)
                     for t in r.get("topics", []): B[k]["topics"][t] = B[k]["topics"].get(t, 0) + 0
     res = {}
     for k, lo in (("today", today), ("week", wk), ("month", mo)):
-        rr = [r for r in all_runs if datetime.date.fromtimestamp(r["finished"] / 1000) >= lo]
+        rr = [r for r in all_runs if datetime.datetime.fromtimestamp(r["finished"] / 1000, PH).date() >= lo]
         res[k] = {"files": B[k]["files"], "statistics": len(B[k]["stats"]) if src == "archive" else B[k]["files"] // 2,
                   "topics": B[k]["topics"], "runs": len(rr), "ok": sum(1 for r in rr if r["result"] == "success"),
                   "errors": sum(1 for r in rr if r["result"] == "error"), "partial": sum(1 for r in rr if r["result"] == "partial")}

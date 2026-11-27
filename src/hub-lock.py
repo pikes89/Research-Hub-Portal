@@ -5,6 +5,13 @@ Library use: decide(iv_hours, force) -> (ok, reason)."""
 import json, os, subprocess, sys, time
 HUB = "/Volumes/YOUR_NAS_SHARE/research-archive/_hub"
 LOCK = os.path.join(HUB, "lock.d"); INFO = os.path.join(LOCK, "info.json"); ROLE = os.path.join(HUB, "role.json")
+def ph_now():
+    """Philippine time (UTC+8, no daylight saving). The schedule always follows it, wherever the Mac is."""
+    import datetime
+    return datetime.datetime.fromtimestamp(time.time(), datetime.timezone(datetime.timedelta(hours=8))).replace(tzinfo=None)
+def ph_date(ts):
+    import datetime
+    return datetime.datetime.fromtimestamp(ts, datetime.timezone(datetime.timedelta(hours=8))).date()
 def me():
     try: return subprocess.check_output(["scutil", "--get", "LocalHostName"], text=True).strip().lower()
     except Exception: return os.uname().nodename.split(".")[0].lower()
@@ -60,7 +67,7 @@ def peer_down():
     r = role(); pr = r.get("primary")
     try: b = json.load(open(os.path.join(HUB, "bots", pr + ".json")))
     except Exception: return ""
-    import datetime; n = datetime.datetime.now()
+    n = ph_now()
     if not (7 * 60 + 40 <= n.hour * 60 + n.minute <= 20 * 60 + 15): return ""
     if ran_recently(pr): return ""
     if time.time() - b.get("ts", 0) > 1200: return "primary bot silent for %d min" % ((time.time() - b.get("ts", 0)) // 60)

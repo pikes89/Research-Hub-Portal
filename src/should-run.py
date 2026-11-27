@@ -24,7 +24,7 @@ res = None
 if os.path.exists(flag):
     os.remove(flag); res = "RUN (run-now requested)"; force = True
 else:
-    h = datetime.datetime.now().hour
+    h = hl.ph_now().hour  # Philippine time, wherever the Mac is
     inwin = s.get("enabled", True) and start <= h <= end - 1
     ok = inwin and (h - start) % iv == 0
     if inwin and not ok:

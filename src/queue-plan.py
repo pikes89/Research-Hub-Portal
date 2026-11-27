@@ -55,7 +55,8 @@ json.dump(q, open(Q, "w"), indent=2)
 
 def today_count():
     try:
-        mid = time.mktime(datetime.date.today().timetuple()); L = os.path.join(DATA, "ledger.jsonl")
+        n = datetime.datetime.fromtimestamp(time.time(), datetime.timezone(datetime.timedelta(hours=8))); mid = time.time() - (n.hour * 3600 + n.minute * 60 + n.second)  # Philippine midnight
+        L = os.path.join(DATA, "ledger.jsonl")
         return sum(1 for l in open(L) if json.loads(l).get("t", 0) >= mid)
     except Exception:
         return 0

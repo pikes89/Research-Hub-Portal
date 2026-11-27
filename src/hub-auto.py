@@ -42,7 +42,9 @@ def self_update(st):
         if os.path.isfile(f) and f.endswith((".py", ".sh", ".html", ".js", ".css")) and os.path.basename(f) not in ("dashboard.html", "status.js"):  # generated per Mac
             shutil.copy2(f, os.path.join(H, os.path.basename(f))); n += 1
     shutil.rmtree(tmp, ignore_errors=True); st["code_sig"] = s
-    return "updated %d code files from the NAS bundle" % n
+    # the dashboard server is long-running: restart it so new server code takes effect (launchd KeepAlive brings it back)
+    subprocess.run(["launchctl", "kickstart", "-k", "gui/%d/com.researchhub.server" % os.getuid()], capture_output=True, timeout=20)
+    return "updated %d code files from the NAS bundle (dashboard server restarted)" % n
 def skill_update(st):
     if not os.path.exists(os.path.join(D, "auto-skill.flag")): return
     tpl = os.path.join(I, "SKILL.md"); s = sig(tpl)
@@ -65,7 +67,7 @@ def snapshot():
 def selftest(st):
     """Twice a day: SLOT am = first bot run after 07:00 (before the first download window at 07:40); SLOT pm = first run after 20:30
     (after the last download at 20:15). Each checks and repairs sync, then compares with the other Mac and reports to the shared channel."""
-    now = datetime.datetime.now(); day = now.strftime("%Y%m%d"); hm = (now.hour, now.minute)
+    now = hl.ph_now(); day = now.strftime("%Y%m%d"); hm = (now.hour, now.minute)
     slot = "pm" if hm >= (20, 30) else "am" if hm >= (7, 0) else None
     if not slot or st.get("check_" + slot) == day: return
     ok, fixed, bad = [], [], []
@@ -106,7 +108,7 @@ def selftest(st):
         if snap["archive_files"] > 0 and abs(cn - snap["archive_files"]) > max(5, snap["archive_files"] // 20): bad.append("dashboard archive list has %d entries but the NAS has %d files" % (cn, snap["archive_files"]))
     except Exception: pass
     if slot == "pm":
-        today = [r for r in (json.loads(l) for l in open(os.path.join(hl.HUB, "runs.jsonl")) if l.strip()) if datetime.datetime.fromtimestamp(r.get("started", 0) / 1000).strftime("%Y%m%d") == day] if snap["runs"] > 0 else []
+        today = [r for r in (json.loads(l) for l in open(os.path.join(hl.HUB, "runs.jsonl")) if l.strip()) if hl.ph_date(r.get("started", 0) / 1000).strftime("%Y%m%d") == day] if snap["runs"] > 0 else []
         if not today: bad.append("no download run was recorded today")
         elif any(isreal(r) for r in today[-3:]): bad.append("last runs today had a real error")
         ok.append("%d runs today" % len(today))
@@ -144,6 +146,12 @@ def sync_views(st):
     if time.time() - st.get("sync_ts", 0) > 300:
         st["sync_ts"] = time.time()
         subprocess.run([sys.executable, os.path.join(H, "hub-sync.py")], capture_output=True, timeout=120)
+    # AI handoff files (rules + running log) mirrored to the NAS so every computer can read them; only the Mac that has them writes
+    for nm in ("AGENTS.md", "MEMORY.md"):
+        src, dst = os.path.join(H, nm), os.path.join(hl.HUB, "ai", nm)
+        a = rd(src)
+        if a and a != rd(dst):
+            os.makedirs(os.path.dirname(dst), exist_ok=True); open(dst + ".tmp", "w").write(a); os.replace(dst + ".tmp", dst)
     return "; ".join(acts) or None
 def refresh_dashboard(st):
     """Dashboards were static files rebuilt only at the end of a run on that one Mac, so the two Macs showed different numbers.
